@@ -1,0 +1,142 @@
+<!-- MINIMALIST POMODORO TIMER WITH STREAK & GOAL TRACKING -->
+<style>
+  .pomodoro-wrapper {
+    font-family: sans-serif;
+    max-width: 400px;
+    margin: auto;
+    padding: 1rem;
+    border: 2px solid #ccc;
+    border-radius: 1rem;
+    text-align: center;
+  }
+  .timer-display {
+    font-size: 3rem;
+    margin: 1rem 0;
+  }
+  .controls button {
+    margin: 0.3rem;
+    padding: 0.5rem 1rem;
+    font-size: 1rem;
+    border: none;
+    border-radius: 0.5rem;
+    background: #444;
+    color: white;
+    cursor: pointer;
+  }
+  .controls button:hover {
+    background: #333;
+  }
+  .streak, .goal-display {
+    margin-top: 1rem;
+    font-size: 1rem;
+  }
+</style>
+
+<div class="pomodoro-wrapper">
+  <h2>Pomodoro Focus Timer</h2>
+  <div>
+    <label>Total Focus Time (min): <input type="number" id="total-time" value="60" min="20" step="10"></label>
+    <br>
+    <label>Focus Sprint Length:
+      <select id="sprint-length">
+        <option value="20">20 min</option>
+        <option value="30" selected>30 min</option>
+        <option value="40">40 min</option>
+      </select>
+    </label>
+  </div>
+
+  <div class="timer-display" id="timer">00:00</div>
+  <div class="controls">
+    <button id="start-btn">Start</button>
+    <button id="pause-btn">Pause</button>
+    <button id="reset-btn">Reset</button>
+  </div>
+
+  <div class="streak" id="streak">Streak: 0 sprints</div>
+  <div class="goal-display" id="goal-display"></div>
+</div>
+
+<script>
+  let timer;
+  let timeLeft = 0;
+  let sprintCount = 0;
+  let currentPhase = 'focus';
+  let totalFocus = 60;
+  let sprintLength = 30;
+
+  function formatTime(seconds) {
+    const min = Math.floor(seconds / 60).toString().padStart(2, '0');
+    const sec = (seconds % 60).toString().padStart(2, '0');
+    return `${min}:${sec}`;
+  }
+
+  function startPomodoro() {
+    clearInterval(timer);
+    totalFocus = parseInt(document.getElementById('total-time').value);
+    sprintLength = parseInt(document.getElementById('sprint-length').value);
+
+    if (timeLeft <= 0) {
+      if (currentPhase === 'focus') {
+        timeLeft = sprintLength * 60;
+      } else {
+        if (sprintCount % 3 === 0) {
+          timeLeft = 15 * 60;
+        } else {
+          timeLeft = 5 * 60;
+        }
+      }
+    }
+
+    timer = setInterval(updateTimer, 1000);
+  }
+
+  function updateTimer() {
+    if (timeLeft <= 0) {
+      clearInterval(timer);
+      if (currentPhase === 'focus') {
+        sprintCount++;
+        localStorage.setItem('streak', sprintCount);
+        updateStreak();
+        currentPhase = 'break';
+      } else {
+        currentPhase = 'focus';
+      }
+
+      if ((sprintCount * sprintLength) < totalFocus) {
+        startPomodoro();
+      } else {
+        document.getElementById('timer').innerText = 'Done!';
+      }
+
+      return;
+    }
+    document.getElementById('timer').innerText = formatTime(timeLeft);
+    timeLeft--;
+  }
+
+  function pauseTimer() {
+    clearInterval(timer);
+  }
+
+  function resetTimer() {
+    clearInterval(timer);
+    timeLeft = 0;
+    sprintCount = 0;
+    currentPhase = 'focus';
+    document.getElementById('timer').innerText = '00:00';
+    localStorage.setItem('streak', 0);
+    updateStreak();
+  }
+
+  function updateStreak() {
+    const streak = localStorage.getItem('streak') || 0;
+    document.getElementById('streak').innerText = `Streak: ${streak} sprint${streak == 1 ? '' : 's'}`;
+  }
+
+  document.getElementById('start-btn').addEventListener('click', startPomodoro);
+  document.getElementById('pause-btn').addEventListener('click', pauseTimer);
+  document.getElementById('reset-btn').addEventListener('click', resetTimer);
+
+  updateStreak();
+</script>
