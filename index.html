@@ -1,142 +1,161 @@
-<!-- MINIMALIST POMODORO TIMER WITH STREAK & GOAL TRACKING -->
-<style>
-  .pomodoro-wrapper {
-    font-family: sans-serif;
-    max-width: 400px;
-    margin: auto;
-    padding: 1rem;
-    border: 2px solid #ccc;
-    border-radius: 1rem;
-    text-align: center;
-  }
-  .timer-display {
-    font-size: 3rem;
-    margin: 1rem 0;
-  }
-  .controls button {
-    margin: 0.3rem;
-    padding: 0.5rem 1rem;
-    font-size: 1rem;
-    border: none;
-    border-radius: 0.5rem;
-    background: #444;
-    color: white;
-    cursor: pointer;
-  }
-  .controls button:hover {
-    background: #333;
-  }
-  .streak, .goal-display {
-    margin-top: 1rem;
-    font-size: 1rem;
-  }
-</style>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pomodoro Focus</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet" />
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Inter', sans-serif;
+      background: url('45A8306C-8A1D-446F-A293-10C5C97C08D8.png') no-repeat center center fixed;
+      background-size: cover;
+      color: white;
+    }
 
-<div class="pomodoro-wrapper">
-  <h2>Pomodoro Focus Timer</h2>
-  <div>
-    <label>Total Focus Time (min): <input type="number" id="total-time" value="60" min="20" step="10"></label>
-    <br>
-    <label>Focus Sprint Length:
-      <select id="sprint-length">
-        <option value="20">20 min</option>
-        <option value="30" selected>30 min</option>
-        <option value="40">40 min</option>
-      </select>
-    </label>
+    .overlay {
+      background: rgba(0, 0, 0, 0.6);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .tabs {
+      display: flex;
+      justify-content: center;
+      margin-top: 20px;
+    }
+
+    .tab-button {
+      background: none;
+      border: none;
+      color: white;
+      font-size: 1.2rem;
+      padding: 10px 20px;
+      cursor: pointer;
+    }
+
+    .tab-button.active {
+      border-bottom: 2px solid white;
+      font-weight: bold;
+    }
+
+    .tab-content {
+      display: none;
+      text-align: center;
+      padding: 20px;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    .timer-display {
+      font-size: 5rem;
+      margin: 30px 0;
+    }
+
+    .controls button {
+      margin: 5px;
+      padding: 10px 20px;
+      font-size: 1rem;
+      cursor: pointer;
+      background-color: #ffffff20;
+      border: 1px solid white;
+      color: white;
+      border-radius: 4px;
+    }
+
+    footer {
+      text-align: center;
+      padding: 10px;
+      background: rgba(0, 0, 0, 0.4);
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="overlay">
+    <div class="tabs">
+      <button class="tab-button active" onclick="showTab('timer')">Timer</button>
+      <button class="tab-button" onclick="showTab('goals')">Goals</button>
+      <button class="tab-button" onclick="showTab('history')">History</button>
+    </div>
+
+    <div id="timer" class="tab-content active">
+      <div class="timer-display" id="time">20:00</div>
+      <div class="controls">
+        <button onclick="startTimer()">Start</button>
+        <button onclick="pauseTimer()">Pause</button>
+        <button onclick="resetTimer()">Reset</button>
+      </div>
+    </div>
+
+    <div id="goals" class="tab-content">
+      <h2>Long-Term Goals</h2>
+      <p>Add your certification goal, study plan, or aim for 10,000 hours of mastery.</p>
+    </div>
+
+    <div id="history" class="tab-content">
+      <h2>Session History</h2>
+      <p>Track your completed sprints and productivity streaks here.</p>
+    </div>
+
+    <footer>
+      Powered by In Motion Web Design
+    </footer>
   </div>
 
-  <div class="timer-display" id="timer">00:00</div>
-  <div class="controls">
-    <button id="start-btn">Start</button>
-    <button id="pause-btn">Pause</button>
-    <button id="reset-btn">Reset</button>
-  </div>
+  <script>
+    let currentTab = 'timer';
+    let timer;
+    let timeLeft = 20 * 60;
+    let isRunning = false;
 
-  <div class="streak" id="streak">Streak: 0 sprints</div>
-  <div class="goal-display" id="goal-display"></div>
-</div>
+    function showTab(tab) {
+      document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
+      document.querySelector(`[onclick="showTab('${tab}')"]`).classList.add('active');
+      document.getElementById(tab).classList.add('active');
+      currentTab = tab;
+    }
 
-<script>
-  let timer;
-  let timeLeft = 0;
-  let sprintCount = 0;
-  let currentPhase = 'focus';
-  let totalFocus = 60;
-  let sprintLength = 30;
-
-  function formatTime(seconds) {
-    const min = Math.floor(seconds / 60).toString().padStart(2, '0');
-    const sec = (seconds % 60).toString().padStart(2, '0');
-    return `${min}:${sec}`;
-  }
-
-  function startPomodoro() {
-    clearInterval(timer);
-    totalFocus = parseInt(document.getElementById('total-time').value);
-    sprintLength = parseInt(document.getElementById('sprint-length').value);
-
-    if (timeLeft <= 0) {
-      if (currentPhase === 'focus') {
-        timeLeft = sprintLength * 60;
-      } else {
-        if (sprintCount % 3 === 0) {
-          timeLeft = 15 * 60;
-        } else {
-          timeLeft = 5 * 60;
-        }
+    function startTimer() {
+      if (!isRunning) {
+        isRunning = true;
+        timer = setInterval(() => {
+          if (timeLeft > 0) {
+            timeLeft--;
+            updateDisplay();
+          } else {
+            clearInterval(timer);
+            isRunning = false;
+          }
+        }, 1000);
       }
     }
 
-    timer = setInterval(updateTimer, 1000);
-  }
-
-  function updateTimer() {
-    if (timeLeft <= 0) {
+    function pauseTimer() {
       clearInterval(timer);
-      if (currentPhase === 'focus') {
-        sprintCount++;
-        localStorage.setItem('streak', sprintCount);
-        updateStreak();
-        currentPhase = 'break';
-      } else {
-        currentPhase = 'focus';
-      }
-
-      if ((sprintCount * sprintLength) < totalFocus) {
-        startPomodoro();
-      } else {
-        document.getElementById('timer').innerText = 'Done!';
-      }
-
-      return;
+      isRunning = false;
     }
-    document.getElementById('timer').innerText = formatTime(timeLeft);
-    timeLeft--;
-  }
 
-  function pauseTimer() {
-    clearInterval(timer);
-  }
+    function resetTimer() {
+      clearInterval(timer);
+      timeLeft = 20 * 60;
+      updateDisplay();
+      isRunning = false;
+    }
 
-  function resetTimer() {
-    clearInterval(timer);
-    timeLeft = 0;
-    sprintCount = 0;
-    currentPhase = 'focus';
-    document.getElementById('timer').innerText = '00:00';
-    localStorage.setItem('streak', 0);
-    updateStreak();
-  }
+    function updateDisplay() {
+      const minutes = String(Math.floor(timeLeft / 60)).padStart(2, '0');
+      const seconds = String(timeLeft % 60).padStart(2, '0');
+      document.getElementById('time').textContent = `${minutes}:${seconds}`;
+    }
 
-  function updateStreak() {
-    const streak = localStorage.getItem('streak') || 0;
-    document.getElementById('streak').innerText = `Streak: ${streak} sprint${streak == 1 ? '' : 's'}`;
-  }
-
-  document.getElementById('start-btn').addEventListener('click', startPomodoro);
-  document.getElementById('pause-btn').addEventListener('click', pauseTimer);
-  document.getElementById('reset-btn').addEventListener('click', resetTimer);
-
-  updateStreak();
-</script>
+    updateDisplay();
+  </script>
+</body>
+</html>
